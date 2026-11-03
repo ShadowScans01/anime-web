@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZetaStream - Panel de Administración</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-950 text-white font-sans antialiased min-h-screen flex flex-col justify-between">
+
+  <!-- Modal de Contraseña (Seguridad básica) -->
+  <div id="auth-modal" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 p-6 rounded-2xl max-w-sm w-full shadow-2xl text-center">
+      <h3 class="text-lg font-bold mb-2">Acceso Restringido</h3>
+      <p class="text-xs text-gray-400 mb-4">Ingresa la contraseña de administrador para continuar.</p>
+      <input type="password" id="admin-pass" placeholder="Contraseña..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:border-red-500">
+      <button onclick="checkPassword()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg text-sm transition">Entrar</button>
+    </div>
+  </div>
+
+  <!-- Navbar -->
+  <header class="bg-gray-900 border-b border-gray-800">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+      <h1 class="text-lg font-bold text-red-500">⚙️ Panel de Administración - ZetaStream</h1>
+      <a href="index.html" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-lg border border-gray-700 transition">← Volver al Sitio</a>
+    </div>
+  </header>
+
+  <!-- Contenido Principal -->
+  <main class="max-w-4xl mx-auto px-4 py-8 flex-grow w-full">
+    
+    <!-- Formulario para Agregar Video -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl mb-8">
+      <h2 class="text-base font-bold mb-4 text-gray-200">➕ Subir Nuevo Video por Enlace</h2>
+      
+      <form id="add-video-form" onsubmit="uploadVideo(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1">Título del Video</label>
+          <input type="text" id="title" required placeholder="Ej. Título del episodio u OVA" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1">URL de la Portada (Imagen)</label>
+            <input type="url" id="cover_url" required placeholder="https://..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1">URL del Reproductor de Video (Iframe src / Enlace)</label>
+            <input type="url" id="video_url" required placeholder="https://doodstream.com/e/..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1">Categoría</label>
+            <select id="category" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500">
+              <option value="Animación 3D">Animación 3D</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1">Enlace a ZetaMods (Opcional)</label>
+            <input type="url" id="zetamods_link" placeholder="https://shadowscans01.github.io/zetamods/..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-lg text-sm transition shadow-md">
+          Guardar y Publicar Video
+        </button>
+      </form>
+    </div>
+
+    <!-- Lista de Videos Existentes (Para Borrar) -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+      <h2 class="text-base font-bold mb-4 text-gray-200">📋 Videos Registrados en el Sistema</h2>
+      <div id="admin-video-list" class="space-y-3">
+        <!-- Se cargan por JavaScript -->
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-gray-900 border-t border-gray-800 text-center py-4 text-xs text-gray-500 mt-10">
+    ZetaStream Admin
+  </footer>
+
+  <script>
+    // ⚠️ REEMPLAZA ESTOS DATOS CON LOS DE TU SUPABASE
+    const SUPABASE_URL = 'TU_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'TU_SUPABASE_ANON_KEY';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Contraseña simple para el panel (cámbiala por la que quieras)
+    const ADMIN_PASSWORD = 'admin123';
+
+    function checkPassword() {
+      const inputPass = document.getElementById('admin-pass').value;
+      if (inputPass === ADMIN_PASSWORD) {
+        document.getElementById('auth-modal').style.display = 'none';
+        loadAdminVideos();
+      } else {
+        alert('Contraseña incorrecta');
+      }
+    }
+
+    async function loadAdminVideos() {
+      const listContainer = document.getElementById('admin-video-list');
+      listContainer.innerHTML = '<p class="text-gray-500 text-xs">Cargando lista...</p>';
+
+      const { data, error } = await supabaseClient.from('videos').select('*').order('id', { ascending: false });
+      if (error) {
+        listContainer.innerHTML = '<p class="text-red-500 text-xs">Error al cargar videos.</p>';
+        return;
+      }
+
+      if (data.length === 0) {
+        listContainer.innerHTML = '<p class="text-gray-500 text-xs">No hay videos subidos todavía.</p>';
+        return;
+      }
+
+      listContainer.innerHTML = '';
+      data.forEach(vid => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between bg-gray-800/50 border border-gray-700/50 p-3 rounded-xl gap-4';
+        item.innerHTML = `
+          <div class="flex items-center gap-3 overflow-hidden">
+            <img src="${vid.cover_url}" class="w-10 h-12 object-cover rounded-md flex-shrink-0">
+            <div class="truncate">
+              <h4 class="text-xs font-bold truncate text-gray-200">${vid.title}</h4>
+              <span class="text-[10px] text-gray-400">${vid.category}</span>
+            </div>
+          </div>
+          <button onclick="deleteVideo(${vid.id})" class="bg-red-950/80 hover:bg-red-900 text-red-400 border border-red-800 text-xs px-3 py-1.5 rounded-lg transition flex-shrink-0">
+            Eliminar
+          </button>
+        `;
+        listContainer.appendChild(item);
+      });
+    }
+
+    async function uploadVideo(e) {
+      e.preventDefault();
+      const title = document.getElementById('title').value;
+      const cover_url = document.getElementById('cover_url').value;
+      const video_url = document.getElementById('video_url').value;
+      const category = document.getElementById('category').value;
+      const zetamods_link = document.getElementById('zetamods_link').value;
+
+      const { error } = await supabaseClient.from('videos').insert([{ title, cover_url, video_url, category, zetamods_link }]);
+
+      if (error) {
+        alert('Error al guardar: ' + error.message);
+      } else {
+        alert('¡Video publicado con éxito!');
+        document.getElementById('add-video-form').reset();
+        loadAdminVideos();
+      }
+    }
+
+    async function deleteVideo(id) {
+      if (!confirm('¿Estás seguro de eliminar este video?')) return;
+      const { error } = await supabaseClient.from('videos').delete().eq('id', id);
+      if (error) {
+        alert('Error al eliminar: ' + error.message);
+      } else {
+        loadAdminVideos();
+      }
+    }
+  </script>
+</body>
+</html>
