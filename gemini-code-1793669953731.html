@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZetaStream - Streaming 3D</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-950 text-white font-sans antialiased min-h-screen flex flex-col justify-between">
+
+  <!-- Encabezado / Navbar -->
+  <header class="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-2">
+        <h1 class="text-xl font-black text-red-500 tracking-wider">ZetaStream 🎬</h1>
+        <span class="text-xs bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded-full font-medium">Streaming 3D</span>
+      </div>
+
+      <!-- Buscador en tiempo real -->
+      <div class="w-full sm:w-72">
+        <input type="text" id="search-input" placeholder="Buscar animación o título..." 
+          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-red-500 transition">
+      </div>
+
+      <!-- Enlaces directos -->
+      <div class="flex items-center gap-3">
+        <a href="https://shadowscans01.github.io/zetamods/" target="_blank" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition">
+          🔥 Ir al catálogo de ZetaMods
+        </a>
+        <a href="admin.html" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-1.5 px-3 rounded-lg text-xs border border-gray-700 transition">
+          ⚙️ Admin
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Banner Promocional -->
+  <div class="bg-gradient-to-r from-purple-950 via-indigo-950 to-gray-900 py-2.5 px-4 text-center border-b border-indigo-900/50">
+    <p class="text-xs sm:text-sm font-medium text-indigo-200">
+      🎮 ¿Quieres descargar los juegos originales de estas animaciones? 
+      <a href="https://shadowscans01.github.io/zetamods/" target="_blank" class="underline text-yellow-400 font-bold ml-1 hover:text-yellow-300">
+        Visita el catálogo en ZetaMods →
+      </a>
+    </p>
+  </div>
+
+  <!-- Contenedor Principal -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+    
+    <!-- Reproductor de Video Activo -->
+    <section class="mb-6 bg-gray-900 border border-gray-800 rounded-2xl p-4 shadow-xl">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+        <h2 class="text-lg font-bold text-gray-100" id="video-title">Selecciona un video para reproducir</h2>
+      </div>
+      <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-gray-800">
+        <iframe id="main-player" class="w-full h-full" src="about:blank" frameborder="0" allowfullscreen></iframe>
+      </div>
+      <div id="video-action-link" class="mt-3 flex justify-end"></div>
+    </section>
+
+    <!-- 🎯 CONTENEDOR VISUAL DE ADSTERRA (BANNER) -->
+    <div class="mb-8 flex justify-center">
+      <div id="container-166ce5ccdc5d7d9f0c2ab02d4b3eea35"></div>
+    </div>
+
+    <!-- Barra de Filtros y Botón Aleatorio -->
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+      <div class="flex flex-wrap gap-2" id="category-filters">
+        <button onclick="filterCategory('all')" class="category-btn bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition">Todos</button>
+        <button onclick="filterCategory('Animación 3D')" class="category-btn bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition">Animación 3D</button>
+      </div>
+
+      <!-- Botón Video Aleatorio -->
+      <button onclick="playRandomVideo()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition shadow-md">
+        🎲 Video Sorpresa / Aleatorio
+      </button>
+    </div>
+
+    <!-- Cuadrícula de Videos -->
+    <h3 class="text-lg font-bold mb-4 text-gray-200">Catálogo Disponible</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" id="video-grid"></div>
+  </main>
+
+  <footer class="bg-gray-900 border-t border-gray-800 text-center py-4 text-xs text-gray-500 mt-10">
+    ZetaStream • Conectado con ZetaMods
+  </footer>
+
+  <!-- SCRIPTS DE ADSTERRA (POPUNDER Y SCRIPTS DE BANNER) -->
+  <script data-cfasync="false" src="https://accountut.com/1/474775ac327d1e2b4275048e104254bf"></script>
+  <script async="async" data-cfasync="false" src="https://bellnewyork.org/21/166ce5ccdc5d7d9f0c2ab02d4b3eea35"></script>
+  <script data-cfasync="false" src="https://bellnewyork.org/14/3446817840e8c75a9ab9d6afd6a9eca5"></script>
+
+  <script>
+    // Credenciales integradas de Supabase
+    const SUPABASE_URL = 'https://uefzzdrhuxwjqlkeznlv.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_ynlCzqEIU9s7HXksw71Nag_SMaXNnEA';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let allVideos = [];
+
+    async function fetchVideos() {
+      const { data, error } = await supabaseClient.from('videos').select('*').order('id', { ascending: false });
+      if (error) {
+        console.error('Error al cargar videos:', error);
+        return;
+      }
+      allVideos = data || [];
+      renderVideos(allVideos);
+      if (allVideos.length > 0) selectVideo(allVideos[0]);
+    }
+
+    function renderVideos(videos) {
+      const grid = document.getElementById('video-grid');
+      grid.innerHTML = '';
+      if (videos.length === 0) {
+        grid.innerHTML = '<p class="text-gray-500 col-span-full text-center py-8">No hay videos subidos aún. Agrega algunos desde el panel de Administración.</p>';
+        return;
+      }
+
+      videos.forEach(vid => {
+        const card = document.createElement('div');
+        card.className = 'bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-red-500 transition cursor-pointer flex flex-col group shadow-lg';
+        card.onclick = () => selectVideo(vid);
+
+        card.innerHTML = `
+          <div class="relative w-full aspect-[4/5] bg-gray-950 overflow-hidden">
+            <img src="${vid.cover_url}" alt="${vid.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+            <span class="absolute top-2 left-2 bg-black/70 backdrop-blur-md text-[10px] text-gray-200 px-2 py-0.5 rounded-md font-semibold">${vid.category || 'Streaming'}</span>
+          </div>
+          <div class="p-3 flex flex-col justify-between flex-grow">
+            <h4 class="font-bold text-xs text-gray-200 line-clamp-2 group-hover:text-red-400 transition">${vid.title}</h4>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function selectVideo(vid) {
+      document.getElementById('main-player').src = vid.video_url;
+      document.getElementById('video-title').innerText = vid.title;
+
+      const actionDiv = document.getElementById('video-action-link');
+      if (vid.zetamods_link && vid.zetamods_link.trim() !== '') {
+        actionDiv.innerHTML = `
+          <a href="${vid.zetamods_link}" target="_blank" class="bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-xs px-3 py-1.5 rounded-lg transition shadow">
+            🎮 ¡Juego disponible en ZetaMods! Descargar →
+          </a>
+        `;
+      } else {
+        actionDiv.innerHTML = '';
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function playRandomVideo() {
+      if (allVideos.length === 0) return;
+      const randomIndex = Math.floor(Math.random() * allVideos.length);
+      selectVideo(allVideos[randomIndex]);
+    }
+
+    function filterCategory(cat) {
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.remove('bg-red-600', 'text-white');
+        btn.classList.add('bg-gray-800', 'text-gray-300');
+      });
+      event.target.classList.remove('bg-gray-800', 'text-gray-300');
+      event.target.classList.add('bg-red-600', 'text-white');
+
+      if (cat === 'all') {
+        renderVideos(allVideos);
+      } else {
+        const filtered = allVideos.filter(v => v.category === cat);
+        renderVideos(filtered);
+      }
+    }
+
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const filtered = allVideos.filter(v => v.title.toLowerCase().includes(term));
+      renderVideos(filtered);
+    });
+
+    fetchVideos();
+  </script>
+</body>
+</html>
