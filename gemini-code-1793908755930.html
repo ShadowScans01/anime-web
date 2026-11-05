@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZetaStream - Videos Permanentes (+18)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-950 text-white font-sans antialiased min-h-screen flex flex-col justify-between">
+
+  <!-- 🔞 Modal de Verificación de Edad (+18) -->
+  <div id="age-modal" class="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-gray-900 border border-gray-800 p-6 rounded-2xl max-w-sm w-full shadow-2xl text-center">
+      <div class="text-3xl mb-2">🔞</div>
+      <h3 class="text-lg font-bold mb-2 text-white">Contenido para Adultos (+18)</h3>
+      <p class="text-xs text-gray-400 mb-6">Este sitio web contiene material exclusivo para mayores de edad. ¿Confirmas que tienes 18 años o más?</p>
+      <div class="flex gap-3">
+        <button onclick="denyAge()" class="w-1/2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition border border-gray-700 cursor-pointer">No, salir</button>
+        <button onclick="acceptAge()" class="w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md cursor-pointer">Sí, soy mayor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 👤 Modal de Autenticación (Supabase Global) -->
+  <div id="auth-modal" class="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-gray-900 border border-gray-800 p-6 rounded-2xl max-w-sm w-full shadow-2xl relative">
+      <button onclick="cerrarModalAuth()" class="absolute top-3 right-3 text-gray-400 hover:text-white text-xs cursor-pointer">✕</button>
+      
+      <div class="text-center mb-4">
+        <div class="text-2xl mb-1">👤</div>
+        <h3 id="auth-modal-title" class="text-base font-bold text-white">Iniciar Sesión</h3>
+      </div>
+
+      <form id="auth-form" onsubmit="ejecutarAutenticacion(event)" class="space-y-3">
+        <div>
+          <label class="block text-[11px] text-gray-400 mb-1">Nombre de usuario</label>
+          <input type="text" id="auth-username" required class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-red-500" placeholder="Tu apodo">
+        </div>
+        <div>
+          <label class="block text-[11px] text-gray-400 mb-1">Contraseña</label>
+          <input type="password" id="auth-password" required class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-red-500" placeholder="Tu contraseña">
+        </div>
+
+        <button type="submit" id="auth-submit-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md cursor-pointer mt-2">Entrar</button>
+      </form>
+
+      <div class="text-center mt-4">
+        <button onclick="cambiarModoAuth()" id="auth-switch-btn" class="text-[11px] text-red-400 hover:underline cursor-pointer">¿No tienes cuenta? Regístrate aquí</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 💳 Modal de Perfil de Usuario -->
+  <div id="profile-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-gray-900 border border-gray-800 p-6 rounded-3xl max-w-sm w-full shadow-2xl relative text-center">
+      <button onclick="cerrarModalPerfil()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xs bg-gray-800 p-2 rounded-full cursor-pointer">✕</button>
+      
+      <div class="relative w-20 h-20 mx-auto mb-3">
+        <div class="absolute inset-0 bg-gradient-to-tr from-red-600 to-gray-800 rounded-full blur-sm opacity-75"></div>
+        <div class="relative w-full h-full bg-gray-950 border-2 border-red-500/50 text-red-500 text-3xl font-extrabold rounded-full flex items-center justify-center shadow-inner">
+          <span id="profile-initial">?</span>
+        </div>
+      </div>
+
+      <h3 id="profile-username-display" class="text-lg font-extrabold text-white tracking-wide">--</h3>
+      <p class="text-xs text-gray-400 mt-0.5">Miembro de ZetaStream</p>
+      <p id="profile-date" class="text-[10px] text-gray-500 mt-1">Cuenta conectada a la nube</p>
+      
+      <div class="my-5 p-3 bg-gray-950 border border-gray-800/80 rounded-2xl flex justify-center items-center">
+        <div class="text-center">
+          <span id="profile-favs-count" class="text-lg font-black text-yellow-400">0</span>
+          <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-0.5">Videos Favoritos</p>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <button onclick="cerrarModalPerfil(); toggleFiltroFavoritos();" class="w-full bg-gray-800 hover:bg-gray-700 text-yellow-400 font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-gray-700">
+          ⭐ Ver mis videos favoritos
+        </button>
+        <button onclick="cerrarSesion(); cerrarModalPerfil();" class="w-full bg-red-950/60 hover:bg-red-900/80 border border-red-800/60 text-red-300 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+          Cerrar Sesión
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 💬 Modal de Detalle de Video y Comentarios (Con contador de vistas integrado) -->
+  <div id="video-detail-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-5 relative shadow-2xl">
+      <button onclick="cerrarModalDetallesVideo()" class="absolute top-3 right-3 text-gray-400 hover:text-white text-xs bg-gray-800 p-2 rounded-full cursor-pointer z-10">✕</button>
+      <div id="video-detail-content"></div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="bg-gray-900 border-b border-gray-800 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <h1 class="text-xl font-extrabold text-red-500 tracking-wider">🎥 ZetaStream</h1>
+        <span class="text-[10px] bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded-full font-semibold">+18 Permanente</span>
+      </div>
+
+      <div class="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+        <input type="text" id="search-input" oninput="filterVideos()" placeholder="Buscar video..." class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500 w-full sm:w-40">
+        <button onclick="toggleFiltroFavoritos()" id="btn-fav-filter" class="bg-gray-800 hover:bg-gray-700 text-yellow-400 text-xs px-2.5 py-1.5 rounded-xl border border-gray-700 transition cursor-pointer">⭐ Favoritos</button>
+
+        <div id="auth-container">
+          <button onclick="abrirModalAuth()" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition cursor-pointer">👤 Entrar</button>
+        </div>
+
+        <a href="admin.html" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-xl border border-gray-700 transition">⚙️ Admin</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 💰 ANUNCIO 1: NATIVO -->
+  <div class="max-w-7xl mx-auto px-4 pt-4 w-full flex justify-center items-center overflow-hidden">
+    <div id="container-166ce5ccdc5d7d9f0c2ab02d4b3eea35"></div>
+    <script async="async" data-cfasync="false" src="https://bellnewyork.org/21/166ce5ccdc5d7d9f0c2ab02d4b3eea35"></script>
+  </div>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+    <div class="mb-6 flex justify-between items-center">
+      <h2 id="catalog-title" class="text-sm font-bold text-gray-400 uppercase tracking-wider">Catálogo de Videos</h2>
+      <span id="video-count" class="text-xs text-gray-500">Cargando...</span>
+    </div>
+
+    <div id="video-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <p class="text-gray-500 text-xs col-span-full text-center py-10">Cargando videos...</p>
+    </div>
+
+    <!-- 💰 ANUNCIO 2: BANNER -->
+    <div class="my-6 flex justify-center items-center overflow-hidden w-full">
+      <script data-cfasync="false" src="https://bellnewyork.org/14/3446817840e8c75a9ab9d6afd6a9eca5"></script>
+    </div>
+
+    <div id="pagination-container" class="flex flex-wrap items-center justify-center gap-1.5 mt-6"></div>
+  </main>
+
+  <footer class="bg-gray-900 border-t border-gray-800 py-4 text-center text-xs text-gray-500">
+    ZetaStream &copy; 2026 - Conectado con Supabase & ZetaMods
+  </footer>
+
+  <script>
+    const SUPABASE_URL = 'https://uefzzdrhuxwjqlkeznlv.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_ynlCzqEIU9s7HXksw71Nag_SMaXNnEA';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let allVideos = [];
+    let currentPage = 1;
+    const itemsPerPage = 12;
+    let esRegistro = false;
+    let usuarioActual = null;
+    let soloFavoritos = false;
+    let videoSeleccionadoId = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const verified = localStorage.getItem('zeta_age_verified');
+      if (verified !== 'true') {
+        document.getElementById('age-modal').classList.remove('hidden');
+      } else {
+        verificarSesionActiva();
+        loadPublicVideos();
+      }
+    });
+
+    function acceptAge() {
+      localStorage.setItem('zeta_age_verified', 'true');
+      document.getElementById('age-modal').classList.add('hidden');
+      verificarSesionActiva();
+      loadPublicVideos();
+    }
+
+    function denyAge() {
+      alert('Debes ser mayor de 18 años para acceder.');
+      window.location.href = 'https://www.google.com';
+    }
+
+    // --- AUTENTICACIÓN GLOBAL VÍA SUPABASE ---
+    function verificarSesionActiva() {
+      const savedUser = localStorage.getItem('zeta_current_user');
+      if (savedUser) {
+        usuarioActual = savedUser;
+      }
+      actualizarUIUsuario();
+    }
+
+    function actualizarUIUsuario() {
+      const authContainer = document.getElementById('auth-container');
+      if (usuarioActual) {
+        authContainer.innerHTML = `
+          <button onclick="abrirModalPerfil()" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-red-400 text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1 cursor-pointer">
+            👤 ${usuarioActual}
+          </button>
+        `;
+      } else {
+        authContainer.innerHTML = `
+          <button onclick="abrirModalAuth()" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition cursor-pointer">👤 Entrar</button>
+        `;
+      }
+    }
+
+    function abrirModalAuth() {
+      document.getElementById('auth-modal').classList.remove('hidden');
+    }
+
+    function cerrarModalAuth() {
+      document.getElementById('auth-modal').classList.add('hidden');
+    }
+
+    function abrirModalPerfil() {
+      if (!usuarioActual) return;
+      document.getElementById('profile-username-display').innerText = usuarioActual;
+      document.getElementById('profile-initial').innerText = usuarioActual.charAt(0).toUpperCase();
+      document.getElementById('profile-favs-count').innerText = obtenerFavoritosUsuario().length;
+      document.getElementById('profile-modal').classList.remove('hidden');
+    }
+
+    function cerrarModalPerfil() {
+      document.getElementById('profile-modal').classList.add('hidden');
+    }
+
+    function cambiarModoAuth() {
+      esRegistro = !esRegistro;
+      document.getElementById('auth-modal-title').innerText = esRegistro ? 'Crear Nuevo Usuario' : 'Iniciar Sesión';
+      document.getElementById('auth-submit-btn').innerText = esRegistro ? 'Registrarse' : 'Entrar';
+      document.getElementById('auth-switch-btn').innerText = esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate aquí';
+    }
+
+    async function ejecutarAutenticacion(e) {
+      e.preventDefault();
+      const user = document.getElementById('auth-username').value.trim();
+      const pass = document.getElementById('auth-password').value.trim();
+      const btn = document.getElementById('auth-submit-btn');
+
+      btn.innerText = "Procesando...";
+      btn.disabled = true;
+
+      if (esRegistro) {
+        const { data: existingUser } = await supabaseClient.from('app_users').select('*').eq('username', user).single();
+
+        if (existingUser) {
+          alert("Este nombre de usuario ya está registrado. Por favor elige otro.");
+          btn.innerText = "Registrarse";
+          btn.disabled = false;
+          return;
+        }
+
+        const { error } = await supabaseClient.from('app_users').insert([{ username: user, password: pass }]);
+
+        if (error) {
+          alert("Error al registrarse: " + error.message);
+        } else {
+          usuarioActual = user;
+          localStorage.setItem('zeta_current_user', user);
+          alert(`¡Cuenta creada globalmente! Bienvenido, ${user}.`);
+          actualizarUIUsuario();
+          cerrarModalAuth();
+          renderVideos();
+        }
+      } else {
+        const { data, error } = await supabaseClient.from('app_users').select('*').eq('username', user).eq('password', pass).single();
+
+        if (error || !data) {
+          alert("Usuario o contraseña incorrectos.");
+        } else {
+          usuarioActual = user;
+          localStorage.setItem('zeta_current_user', user);
+          alert(`¡Bienvenido de nuevo, ${user}!`);
+          actualizarUIUsuario();
+          cerrarModalAuth();
+          renderVideos();
+        }
+      }
+
+      btn.innerText = esRegistro ? 'Registrarse' : 'Entrar';
+      btn.disabled = false;
+    }
+
+    function cerrarSesion() {
+      usuarioActual = null;
+      localStorage.removeItem('zeta_current_user');
+      actualizarUIUsuario();
+      if (soloFavoritos) toggleFiltroFavoritos();
+      renderVideos();
+    }
+
+    // --- FAVORITOS ---
+    function obtenerFavoritosUsuario() {
+      if (!usuarioActual) return [];
+      return JSON.parse(localStorage.getItem(`zeta_favs_${usuarioActual}`) || '[]');
+    }
+
+    function toggleFavorito(videoId, event) {
+      if (event) event.stopPropagation();
+      if (!usuarioActual) {
+        alert("Inicia sesión para guardar tus favoritos.");
+        abrirModalAuth();
+        return;
+      }
+
+      let favs = obtenerFavoritosUsuario();
+      if (favs.includes(videoId)) {
+        favs = favs.filter(id => id !== videoId);
+      } else {
+        favs.push(videoId);
+      }
+
+      localStorage.setItem(`zeta_favs_${usuarioActual}`, JSON.stringify(favs));
+      renderVideos();
+    }
+
+    function toggleFiltroFavoritos() {
+      if (!usuarioActual && !soloFavoritos) {
+        alert("Inicia sesión para ver tus favoritos.");
+        abrirModalAuth();
+        return;
+      }
+      soloFavoritos = !soloFavoritos;
+      const btn = document.getElementById('btn-fav-filter');
+      const title = document.getElementById('catalog-title');
+
+      if (soloFavoritos) {
+        btn.className = "bg-yellow-500 text-gray-950 font-bold text-xs px-2.5 py-1.5 rounded-xl transition cursor-pointer";
+        title.innerText = "⭐ Mis Videos Favoritos";
+      } else {
+        btn.className = "bg-gray-800 hover:bg-gray-700 text-yellow-400 text-xs px-2.5 py-1.5 rounded-xl border border-gray-700 transition cursor-pointer";
+        title.innerText = "Catálogo de Videos";
+      }
+      currentPage = 1;
+      renderVideos();
+    }
+
+    // --- CARGA DE VIDEOS, COMENTARIOS Y VISTAS ---
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    async function loadPublicVideos() {
+      const grid = document.getElementById('video-grid');
+      grid.innerHTML = '<p class="text-gray-500 text-xs col-span-full text-center py-10">Cargando videos...</p>';
+
+      const { data, error } = await supabaseClient.from('videos').select('*').order('id', { ascending: false });
+      
+      if (error) {
+        grid.innerHTML = `<p class="text-red-500 text-xs col-span-full text-center">Error al cargar datos: ${escapeHtml(error.message)}</p>`;
+        document.getElementById('video-count').innerText = '0 videos';
+        return;
+      }
+
+      allVideos = data || [];
+      renderVideos();
+    }
+
+    function renderVideos() {
+      const grid = document.getElementById('video-grid');
+      const searchVal = document.getElementById('search-input').value.toLowerCase().trim();
+      const favsList = obtenerFavoritosUsuario();
+
+      let filtered = allVideos.filter(v => v.title && v.title.toLowerCase().includes(searchVal));
+
+      if (soloFavoritos) {
+        filtered = filtered.filter(v => favsList.includes(v.id));
+      }
+
+      document.getElementById('video-count').innerText = `${filtered.length} videos`;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = soloFavoritos 
+          ? '<p class="text-gray-500 text-xs col-span-full text-center py-10">No tienes favoritos aun. ¡Haz clic en la estrella del video para guardarlo!</p>'
+          : '<p class="text-gray-500 text-xs col-span-full text-center py-10">No se encontraron videos disponibles.</p>';
+        document.getElementById('pagination-container').innerHTML = '';
+        return;
+      }
+
+      const totalPages = Math.ceil(filtered.length / itemsPerPage);
+      if (currentPage > totalPages) currentPage = 1;
+
+      const start = (currentPage - 1) * itemsPerPage;
+      const paginatedVideos = filtered.slice(start, start + itemsPerPage);
+
+      grid.innerHTML = '';
+      paginatedVideos.forEach(vid => {
+        const card = document.createElement('div');
+        card.className = 'bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-lg hover:border-gray-700 transition flex flex-col justify-between relative cursor-pointer';
+        
+        card.onclick = (e) => {
+          if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A' && e.target.tagName !== 'VIDEO') {
+            abrirDetallesVideo(vid.id);
+          }
+        };
+
+        const safeTitle = escapeHtml(vid.title);
+        const safeVideoUrl = escapeHtml(vid.video_url);
+        const safeZetaModsLink = escapeHtml(vid.zetamods_link);
+        const esFav = favsList.includes(vid.id);
+
+        card.innerHTML = `
+          <div>
+            <div class="aspect-video bg-black relative">
+              <video src="${safeVideoUrl}#t=1" preload="metadata" controls class="w-full h-full object-cover"></video>
+              <button onclick="toggleFavorito(${vid.id}, event)" class="absolute top-2 right-2 bg-black/70 hover:bg-black p-1.5 rounded-full text-xs transition cursor-pointer shadow-md" title="${esFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}">
+                ${esFav ? '⭐' : '☆'}
+              </button>
+            </div>
+            <div class="p-3">
+              <h3 class="text-xs font-bold text-gray-200 line-clamp-2">${safeTitle}</h3>
+            </div>
+          </div>
+          <div class="p-3 pt-0 flex gap-2">
+            <button onclick="abrirDetallesVideo(${vid.id})" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 text-center text-[11px] font-semibold py-1.5 rounded-xl transition">💬 Comentarios</button>
+            ${safeZetaModsLink ? `
+              <a href="${safeZetaModsLink}" target="_blank" rel="noopener noreferrer" class="bg-red-950 hover:bg-red-900 text-red-400 border border-red-800 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition flex items-center">🔗 Mod</a>
+            ` : ''}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      renderPagination(totalPages);
+    }
+
+    // --- AQUÍ ESTÁ LA FUNCIÓN CON LA SUMA DE VISTAS INTEGRA ---
+    function abrirDetallesVideo(videoId) {
+      // 1. Sumar 1 vista al contador
+      let currentViews = parseInt(localStorage.getItem(`zeta_views_${videoId}`) || '0');
+      localStorage.setItem(`zeta_views_${videoId}`, currentViews + 1);
+
+      // 2. Abrir reproductor
+      const vid = allVideos.find(v => v.id === videoId);
+      if (!vid) return;
+
+      videoSeleccionadoId = vid.id;
+      const modal = document.getElementById('video-detail-modal');
+      const content = document.getElementById('video-detail-content');
+      const favsList = obtenerFavoritosUsuario();
+      const esFav = favsList.includes(vid.id);
+
+      content.innerHTML = `
+        <div class="aspect-video bg-black rounded-xl overflow-hidden mb-3">
+          <video src="${escapeHtml(vid.video_url)}" controls autoplay class="w-full h-full object-contain"></video>
+        </div>
+        <div class="flex justify-between items-start gap-4 mb-4">
+          <h2 class="text-base font-bold text-white">${escapeHtml(vid.title)}</h2>
+          <button onclick="toggleFavorito(${vid.id}); abrirDetallesVideo(${vid.id});" class="bg-gray-800 hover:bg-gray-700 px-3 py-1 rounded-xl text-xs flex items-center gap-1 border border-gray-700 cursor-pointer">
+            ${esFav ? '⭐ En Favoritos' : '☆ Guardar'}
+          </button>
+        </div>
+
+        <div class="border-t border-gray-800 pt-4">
+          <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">💬 Comentarios</h3>
+          
+          <div id="video-comments-list" class="space-y-2 mb-4 max-h-40 overflow-y-auto pr-1">
+            <p class="text-gray-500 text-xs italic">Cargando comentarios...</p>
+          </div>
+
+          <form onsubmit="guardarComentarioVideo(event)" class="space-y-2 bg-gray-950 p-3 rounded-xl border border-gray-800">
+            <input type="text" id="comment-author-input" required ${usuarioActual ? `value="${usuarioActual}" readonly` : ''} placeholder="Tu apodo" class="w-full bg-gray-900 border border-gray-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-red-500">
+            <textarea id="comment-text-input" required rows="2" placeholder="Escribe un comentario..." class="w-full bg-gray-900 border border-gray-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-red-500 resize-none"></textarea>
+            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg text-xs transition cursor-pointer">Publicar Comentario</button>
+          </form>
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+      cargarComentariosVideo(vid.id);
+    }
+
+    function cerrarModalDetallesVideo() {
+      document.getElementById('video-detail-modal').classList.add('hidden');
+      videoSeleccionadoId = null;
+    }
+
+    async function cargarComentariosVideo(videoId) {
+      const container = document.getElementById('video-comments-list');
+      if (!container) return;
+
+      const { data, error } = await supabaseClient
+        .from('video_comments')
+        .select('*')
+        .eq('video_id', videoId)
+        .order('created_at', { ascending: false });
+
+      if (error || !data || data.length === 0) {
+        container.innerHTML = `<p class="text-gray-500 text-xs italic">Aún no hay comentarios. ¡Sé el primero!</p>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      data.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'bg-gray-950 border border-gray-800/80 rounded-lg p-2 text-xs';
+        div.innerHTML = `
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-red-400">${escapeHtml(c.author)}</span>
+            <span class="text-[10px] text-gray-500">${new Date(c.created_at).toLocaleDateString()}</span>
+          </div>
+          <p class="text-gray-300">${escapeHtml(c.content)}</p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function guardarComentarioVideo(e) {
+      e.preventDefault();
+      const autor = document.getElementById('comment-author-input').value.trim();
+      const texto = document.getElementById('comment-text-input').value.trim();
+
+      if (!videoSeleccionadoId) return;
+
+      const { error } = await supabaseClient
+        .from('video_comments')
+        .insert([{ video_id: videoSeleccionadoId, author: autor, content: texto }]);
+
+      if (error) {
+        alert("Error al guardar comentario: " + error.message);
+      } else {
+        document.getElementById('comment-text-input').value = '';
+        cargarComentariosVideo(videoSeleccionadoId);
+      }
+    }
+
+    function renderPagination(totalPages) {
+      const container = document.getElementById('pagination-container');
+      container.innerHTML = '';
+
+      if (totalPages <= 1) return;
+
+      const prevBtn = document.createElement('button');
+      prevBtn.innerText = '◀ Anterior';
+      prevBtn.className = `px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${currentPage === 1 ? 'bg-gray-900 text-gray-600 border-gray-800 cursor-not-allowed' : 'bg-gray-900 hover:bg-gray-800 text-gray-300 border-gray-700 cursor-pointer'}`;
+      prevBtn.disabled = currentPage === 1;
+      prevBtn.onclick = () => { if (currentPage > 1) { currentPage--; renderVideos(); } };
+      container.appendChild(prevBtn);
+
+      for (let i = 1; i <= totalPages; i++) {
+        const numBtn = document.createElement('button');
+        numBtn.innerText = i;
+        numBtn.className = `px-3.5 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${i === currentPage ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-gray-900 hover:bg-gray-800 text-gray-300 border-gray-700'}`;
+        numBtn.onclick = () => { currentPage = i; renderVideos(); };
+        container.appendChild(numBtn);
+      }
+
+      const nextBtn = document.createElement('button');
+      nextBtn.innerText = 'Próximo ▶';
+      nextBtn.className = `px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${currentPage === totalPages ? 'bg-gray-900 text-gray-600 border-gray-800 cursor-not-allowed' : 'bg-gray-900 hover:bg-gray-800 text-gray-300 border-gray-700 cursor-pointer'}`;
+      nextBtn.disabled = currentPage === totalPages;
+      nextBtn.onclick = () => { if (currentPage < totalPages) { currentPage++; renderVideos(); } };
+      container.appendChild(nextBtn);
+    }
+
+    function filterVideos() {
+      currentPage = 1;
+      renderVideos();
+    }
+  </script>
+
+  <!-- 💰 ANUNCIO 3: POPUNDER EMERGENTE -->
+  <script data-cfasync="false" src="https://accountut.com/1/474775ac327d1e2b4275048e104254bf"></script>
+
+</body>
+</html>
