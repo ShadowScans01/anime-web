@@ -1,0 +1,27 @@
+async function cargarUsuariosRegistrados() {
+  const container = document.getElementById('users-list-container');
+  const { data: users, error } = await supabaseClient.from('app_users').select('*').order('id', { ascending: false });
+
+  if (error || !users) {
+    container.innerHTML = `<p class="text-gray-500 text-xs italic">No hay usuarios registrados todavía.</p>`;
+    document.getElementById('stat-users').innerText = '0';
+    return;
+  }
+
+  document.getElementById('stat-users').innerText = users.length;
+
+  container.innerHTML = '';
+  users.forEach(u => {
+    const joinDate = new Date(u.created_at).toLocaleDateString();
+    const div = document.createElement('div');
+    div.className = 'bg-gray-950 border border-gray-800 p-2.5 rounded-xl flex justify-between items-center text-xs';
+    div.innerHTML = `
+      <div>
+        <span class="font-bold text-indigo-400">👤 ${escapeHtml(u.username)}</span>
+        <span class="text-[10px] text-gray-500 ml-2">(Se unió: ${joinDate})</span>
+      </div>
+      <span class="text-[10px] text-green-400 font-semibold">✓ Conectado en Supabase</span>
+    `;
+    container.appendChild(div);
+  });
+}
